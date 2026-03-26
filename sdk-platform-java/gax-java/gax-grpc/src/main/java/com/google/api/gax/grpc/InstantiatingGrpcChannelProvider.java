@@ -790,6 +790,7 @@ public final class InstantiatingGrpcChannelProvider implements TransportChannelP
             .intercept(new GrpcChannelUUIDInterceptor())
             .intercept(new GrpcLoggingInterceptor())
             .intercept(headerInterceptor)
+            .intercept(new GrpcTracePropagationInterceptor())
             .intercept(metadataHandlerInterceptor)
             .userAgent(headerInterceptor.getUserAgentHeader())
             .executor(executor);

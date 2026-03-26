@@ -131,14 +131,7 @@ class InstantiatingHttpJsonChannelProviderTest extends AbstractMtlsTransportChan
     HttpJsonTransportChannel httpJsonTransportChannel =
         instantiatingHttpJsonChannelProvider.getTransportChannel();
 
-    // By default, the channel will be wrapped with ManagedHttpJsonInterceptorChannel
-    ManagedHttpJsonInterceptorChannel interceptorChannel =
-        (ManagedHttpJsonInterceptorChannel) httpJsonTransportChannel.getManagedChannel();
-    // call getChannel() twice because interceptors are chained in layers by recursive construction
-    // inside com.google.api.gax.httpjson.InstantiatingHttpJsonChannelProvider.createChannel
-    ManagedHttpJsonInterceptorChannel managedHttpJsonChannel =
-        (ManagedHttpJsonInterceptorChannel) interceptorChannel.getChannel();
-    ManagedHttpJsonChannel channel = managedHttpJsonChannel.getChannel();
+    ManagedHttpJsonChannel channel = unwrapChannel(httpJsonTransportChannel.getManagedChannel());
     assertThat(channel.getExecutor()).isNotNull();
 
     // Clean up the resources (executor, deadlineScheduler, httpTransport)
@@ -164,20 +157,20 @@ class InstantiatingHttpJsonChannelProviderTest extends AbstractMtlsTransportChan
     HttpJsonTransportChannel httpJsonTransportChannel =
         instantiatingHttpJsonChannelProvider.getTransportChannel();
 
-    // By default, the channel will be wrapped with ManagedHttpJsonInterceptorChannel
-    ManagedHttpJsonInterceptorChannel interceptorChannel =
-        (ManagedHttpJsonInterceptorChannel) httpJsonTransportChannel.getManagedChannel();
-    // call getChannel() twice because interceptors are chained in layers by recursive construction
-    // inside com.google.api.gax.httpjson.InstantiatingHttpJsonChannelProvider.createChannel
-    ManagedHttpJsonInterceptorChannel managedHttpJsonChannel =
-        (ManagedHttpJsonInterceptorChannel) interceptorChannel.getChannel();
-    ManagedHttpJsonChannel channel = managedHttpJsonChannel.getChannel();
+    ManagedHttpJsonChannel channel = unwrapChannel(httpJsonTransportChannel.getManagedChannel());
 
     assertThat(channel.getExecutor()).isNotNull();
     assertThat(channel.getExecutor()).isEqualTo(executor);
 
     // Clean up the resources (executor, deadlineScheduler, httpTransport)
     instantiatingHttpJsonChannelProvider.getTransportChannel().shutdownNow();
+  }
+
+  private ManagedHttpJsonChannel unwrapChannel(HttpJsonChannel channel) {
+    while (channel instanceof ManagedHttpJsonInterceptorChannel) {
+      channel = ((ManagedHttpJsonInterceptorChannel) channel).getChannel();
+    }
+    return (ManagedHttpJsonChannel) channel;
   }
 
   @Override
