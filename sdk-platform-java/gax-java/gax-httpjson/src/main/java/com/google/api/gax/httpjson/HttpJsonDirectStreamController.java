@@ -82,11 +82,12 @@ class HttpJsonDirectStreamController<RequestT, ResponseT> implements StreamContr
   }
 
   void start(RequestT request, ApiCallContext context) {
+    HttpJsonCallContext httpJsonContext = HttpJsonCallContext.createDefault().nullToSelf(context);
     responseObserver.onStart(this);
     this.hasStarted = true;
     clientCall.start(
         new ResponseObserverAdapter(),
-        HttpJsonMetadata.newBuilder().build().withHeaders(context.getExtraHeaders()));
+        HttpJsonClientCalls.getMetadataWithTraceContext(httpJsonContext));
 
     if (autoflowControl) {
       clientCall.request(1);

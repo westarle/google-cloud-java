@@ -54,6 +54,47 @@ public class SpanTracer implements ApiTracer {
   private final String attemptSpanName;
   private final ApiTracerContext apiTracerContext;
   private Span attemptSpan;
+  private static volatile Boolean isOpentelemetryAvailable;
+
+  private static boolean isOpenTelemetryAvailable() {
+    if (isOpentelemetryAvailable == null) {
+      synchronized (SpanTracer.class) {
+        if (isOpentelemetryAvailable == null) {
+          try {
+            Class.forName("io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator");
+            isOpentelemetryAvailable = true;
+          } catch (ClassNotFoundException e) {
+            isOpentelemetryAvailable = false;
+          }
+        }
+      }
+    }
+    return isOpentelemetryAvailable;
+  }
+
+  @Override
+  public void injectTraceContext(java.util.Map<String, String> carrier) {
+    if (!isOpenTelemetryAvailable()) {
+      return;
+    }
+    if (attemptSpan != null) {
+      try {
+        io.opentelemetry.context.Context context =
+            io.opentelemetry.context.Context.current().with(attemptSpan);
+        io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator.getInstance()
+            .inject(
+                context,
+                carrier,
+                (c, k, v) -> {
+                  if (c != null) {
+                    c.put(k, v);
+                  }
+                });
+      } catch (NoSuchMethodError e) {
+        // Silently ignore if incompatible OpenTelemetry version
+      }
+    }
+  }
 
   /**
    * Creates a new instance of {@code SpanTracer}.
