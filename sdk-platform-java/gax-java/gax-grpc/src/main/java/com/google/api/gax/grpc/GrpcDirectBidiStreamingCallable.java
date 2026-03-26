@@ -34,6 +34,7 @@ import com.google.api.gax.rpc.BidiStreamingCallable;
 import com.google.api.gax.rpc.ClientStream;
 import com.google.api.gax.rpc.ClientStreamReadyObserver;
 import com.google.api.gax.rpc.ResponseObserver;
+import com.google.api.gax.tracing.ApiTracer.Scope;
 import com.google.common.base.Preconditions;
 import io.grpc.ClientCall;
 import io.grpc.MethodDescriptor;
@@ -93,7 +94,9 @@ class GrpcDirectBidiStreamingCallable<RequestT, ResponseT>
                 onReady.onReady(clientStream);
               }
             });
-    controller.startBidi();
+    try (Scope ignored = context.getTracer().inScope()) {
+      controller.startBidi();
+    }
 
     return clientStream;
   }

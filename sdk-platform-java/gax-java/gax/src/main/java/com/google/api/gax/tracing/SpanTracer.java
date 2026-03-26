@@ -147,6 +147,15 @@ public class SpanTracer implements ApiTracer {
   }
 
   @Override
+  public Scope inScope() {
+    if (attemptSpan != null) {
+      io.opentelemetry.context.Scope otelScope = attemptSpan.makeCurrent();
+      return otelScope::close;
+    }
+    return () -> {};
+  }
+
+  @Override
   public void attemptStarted(Object request, int attemptNumber) {
     Map<String, Object> currentAttemptAttributes = new HashMap<>(this.attemptAttributes);
 

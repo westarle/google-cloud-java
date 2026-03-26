@@ -32,6 +32,7 @@ package com.google.api.gax.httpjson;
 import com.google.api.core.ApiFuture;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.UnaryCallable;
+import com.google.api.gax.tracing.ApiTracer.Scope;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.TypeRegistry;
 
@@ -65,7 +66,9 @@ class HttpJsonDirectCallable<RequestT, ResponseT> extends UnaryCallable<RequestT
 
     HttpJsonClientCall<RequestT, ResponseT> clientCall =
         HttpJsonClientCalls.newCall(descriptor, context);
-    return HttpJsonClientCalls.futureUnaryCall(clientCall, request, context);
+    try (Scope ignored = context.getTracer().inScope()) {
+      return HttpJsonClientCalls.futureUnaryCall(clientCall, request, context);
+    }
   }
 
   @Override

@@ -33,6 +33,7 @@ import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.ResponseObserver;
 import com.google.api.gax.rpc.ServerStreamingCallable;
 import com.google.api.gax.rpc.StreamController;
+import com.google.api.gax.tracing.ApiTracer.Scope;
 import com.google.common.base.Preconditions;
 
 /**
@@ -64,6 +65,8 @@ class HttpJsonDirectServerStreamingCallable<RequestT, ResponseT>
     HttpJsonClientCall<RequestT, ResponseT> call = HttpJsonClientCalls.newCall(descriptor, context);
     HttpJsonDirectStreamController<RequestT, ResponseT> controller =
         new HttpJsonDirectStreamController<>(call, responseObserver);
-    controller.start(request, context);
+    try (Scope ignored = context.getTracer().inScope()) {
+      controller.start(request, context);
+    }
   }
 }

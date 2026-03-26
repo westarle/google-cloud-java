@@ -34,6 +34,7 @@ import com.google.api.core.InternalApi;
 import com.google.api.core.ListenableFutureToApiFuture;
 import com.google.api.gax.rpc.ApiCallContext;
 import com.google.api.gax.rpc.UnaryCallable;
+import com.google.api.gax.tracing.ApiTracer.Scope;
 import com.google.common.base.Preconditions;
 import io.grpc.ClientCall;
 import io.grpc.MethodDescriptor;
@@ -61,10 +62,12 @@ class GrpcDirectCallable<RequestT, ResponseT> extends UnaryCallable<RequestT, Re
 
     ClientCall<RequestT, ResponseT> clientCall = GrpcClientCalls.newCall(descriptor, inputContext);
 
-    if (awaitTrailers) {
-      return new ListenableFutureToApiFuture<>(ClientCalls.futureUnaryCall(clientCall, request));
-    } else {
-      return GrpcClientCalls.eagerFutureUnaryCall(clientCall, request);
+    try (Scope ignored = inputContext.getTracer().inScope()) {
+      if (awaitTrailers) {
+        return new ListenableFutureToApiFuture<>(ClientCalls.futureUnaryCall(clientCall, request));
+      } else {
+        return GrpcClientCalls.eagerFutureUnaryCall(clientCall, request);
+      }
     }
   }
 
