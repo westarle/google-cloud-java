@@ -21,15 +21,9 @@ import static com.google.common.truth.Truth.assertThat;
 import com.google.cloud.bigquery.testing.RemoteBigQueryHelper;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.sdk.OpenTelemetrySdk;
-import io.opentelemetry.sdk.common.CompletableResultCode;
-import io.opentelemetry.sdk.trace.SdkTracerProvider;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import io.opentelemetry.sdk.trace.samplers.Sampler;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.junit.After;
@@ -41,30 +35,6 @@ public class EnableOpenTelemetryTracingIT {
   private ByteArrayOutputStream bout;
   private PrintStream out;
   private PrintStream originalPrintStream;
-
-  private static class ConsoleSpanExporter
-      implements io.opentelemetry.sdk.trace.export.SpanExporter {
-    @Override
-    public CompletableResultCode export(Collection<SpanData> collection) {
-      if (collection.isEmpty()) {
-        return CompletableResultCode.ofFailure();
-      }
-      for (SpanData data : collection) {
-        System.out.println(data);
-      }
-      return CompletableResultCode.ofSuccess();
-    }
-
-    @Override
-    public CompletableResultCode flush() {
-      return CompletableResultCode.ofSuccess();
-    }
-
-    @Override
-    public CompletableResultCode shutdown() {
-      return CompletableResultCode.ofSuccess();
-    }
-  }
 
   @Before
   public void setUp() {
@@ -80,6 +50,13 @@ public class EnableOpenTelemetryTracingIT {
     System.out.flush();
     System.setOut(originalPrintStream);
     log.log(Level.INFO, "\n" + bout.toString());
+    
+    // Clear system properties
+    System.clearProperty("otel.traces.exporter");
+    System.clearProperty("otel.metrics.exporter");
+    System.clearProperty("otel.logs.exporter");
+    System.clearProperty("otel.exporter.otlp.endpoint");
+    System.clearProperty("otel.exporter.otlp.protocol");
   }
 
   @Test
@@ -87,13 +64,17 @@ public class EnableOpenTelemetryTracingIT {
     final String tracerName = "testSampleTracer";
     final String datasetId = RemoteBigQueryHelper.generateDatasetName();
 
-    SdkTracerProvider tracerProvider =
-        SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.builder(new ConsoleSpanExporter()).build())
-            .setSampler(Sampler.alwaysOn())
-            .build();
+    // Skip the test if GOOGLE_CLOUD_PROJECT is not set (e.g. running outside CI)
+    org.junit.Assume.assumeTrue(System.getenv("GOOGLE_CLOUD_PROJECT") != null);
 
-    OpenTelemetry otel = OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
+    // Configure OTLP to export to Google Cloud Telemetry with GCP auth
+    System.setProperty("otel.traces.exporter", "otlp");
+    System.setProperty("otel.metrics.exporter", "none");
+    System.setProperty("otel.logs.exporter", "none");
+    System.setProperty("otel.exporter.otlp.endpoint", "https://telemetry.googleapis.com");
+    System.setProperty("otel.exporter.otlp.protocol", "http/protobuf");
+
+    OpenTelemetry otel = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
 
     final Tracer tracer = otel.getTracer(tracerName);
 

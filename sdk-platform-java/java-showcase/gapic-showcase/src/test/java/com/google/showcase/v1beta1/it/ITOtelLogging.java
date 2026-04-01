@@ -116,7 +116,7 @@ class ITOtelLogging {
   @Test
   void testLogging_success_noL4Log_grpc() throws Exception {
     EchoSettings grpcEchoSettings = createEchoSettings(false);
-    EchoStub stub = createStubWithServiceName(grpcEchoSettings);
+    EchoStub stub = createStubWithServiceName(grpcEchoSettings, new com.google.api.gax.tracing.LoggingTracerFactory());
     try (EchoClient client = EchoClient.create(stub)) {
       try {
         client.echo(EchoRequest.newBuilder().setContent("logging-test").build());
@@ -131,7 +131,7 @@ class ITOtelLogging {
   @Test
   void testLogging_success_noL4Log_httpjson() throws Exception {
     EchoSettings httpJsonEchoSettings = createEchoSettings(true);
-    EchoStub stub = createStubWithServiceName(httpJsonEchoSettings);
+    EchoStub stub = createStubWithServiceName(httpJsonEchoSettings, new com.google.api.gax.tracing.LoggingTracerFactory());
     try (EchoClient client = EchoClient.create(stub)) {
       try {
         client.echo(EchoRequest.newBuilder().setContent("logging-test").build());
@@ -163,8 +163,7 @@ class ITOtelLogging {
             .setEndpoint("localhost:12345")
             .build();
 
-    EchoStubSettings echoStubSettings = (EchoStubSettings) grpcEchoSettings.getStubSettings();
-    EchoStub stub = new ExtendedEchoStubSettings(echoStubSettings.toBuilder()).createStub();
+    EchoStub stub = createStubWithServiceName(grpcEchoSettings, new com.google.api.gax.tracing.LoggingTracerFactory());
     EchoClient client = EchoClient.create(stub);
 
     EchoRequest echoRequest = EchoRequest.newBuilder().setContent("test").build();
@@ -205,8 +204,7 @@ class ITOtelLogging {
             .setEndpoint("localhost:12345")
             .build();
 
-    EchoStubSettings echoStubSettings = (EchoStubSettings) grpcEchoSettings.getStubSettings();
-    EchoStub stub = new ExtendedEchoStubSettings(echoStubSettings.toBuilder()).createStub();
+    EchoStub stub = createStubWithServiceName(grpcEchoSettings, new com.google.api.gax.tracing.LoggingTracerFactory());
     EchoClient client = EchoClient.create(stub);
 
     EchoRequest echoRequest = EchoRequest.newBuilder().setContent("test").build();
@@ -244,9 +242,10 @@ class ITOtelLogging {
     }
   }
 
-  private EchoStub createStubWithServiceName(EchoSettings settings) throws IOException {
+  private EchoStub createStubWithServiceName(EchoSettings settings, com.google.api.gax.tracing.ApiTracerFactory tracerFactory) throws IOException {
     EchoStubSettings.Builder builder =
         (EchoStubSettings.Builder) settings.getStubSettings().toBuilder();
+    builder.setTracerFactory(tracerFactory);
     return new ExtendedEchoStubSettings(builder).createStub();
   }
 
