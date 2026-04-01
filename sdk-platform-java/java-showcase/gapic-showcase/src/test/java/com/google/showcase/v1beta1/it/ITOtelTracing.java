@@ -52,6 +52,8 @@ import com.google.showcase.v1beta1.EchoClient;
 import com.google.showcase.v1beta1.EchoRequest;
 import com.google.showcase.v1beta1.EchoResponse;
 import com.google.showcase.v1beta1.EchoSettings;
+import com.google.showcase.v1beta1.GetUserRequest;
+import com.google.showcase.v1beta1.IdentityClient;
 import com.google.showcase.v1beta1.it.util.TestClientInitializer;
 import com.google.showcase.v1beta1.stub.EchoStub;
 import com.google.showcase.v1beta1.stub.EchoStubSettings;
@@ -115,6 +117,211 @@ class ITOtelTracing {
   }
 
   @Test
+  void testTracing_disabled_grpc() throws Exception {
+    try (EchoClient client = TestClientInitializer.createGrpcEchoClient()) {
+      client.echo(EchoRequest.newBuilder().setContent("tracing-test").build());
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isEmpty();
+    }
+  }
+
+  @Test
+  void testTracing_disabled_httpjson() throws Exception {
+    try (EchoClient client = TestClientInitializer.createHttpJsonEchoClient()) {
+      client.echo(EchoRequest.newBuilder().setContent("tracing-test").build());
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isEmpty();
+    }
+  }
+
+  @Test
+  void testTracing_successfulIdentityGetUser_grpc() throws Exception {
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+
+    try (IdentityClient client =
+        TestClientInitializer.createGrpcIdentityClientOpentelemetry(tracingFactory)) {
+
+      try {
+        client.getUser(GetUserRequest.newBuilder().setName("users/test-user").build());
+      } catch (Exception e) {
+      }
+
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isNotEmpty();
+
+      SpanData attemptSpan =
+          spans.stream()
+              .filter(span -> span.getName().equals("google.showcase.v1beta1.Identity/GetUser"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Incorrect span name"));
+      
+      assertThat(
+              attemptSpan
+                  .getAttributes()
+                  .get(AttributeKey.stringKey("gcp.resource.destination.id")))
+          .isEqualTo("users/test-user");
+          
+      // TODO: add assertion for rpc.response.status_code (expected "OK" or "NOT_FOUND")
+    }
+  }
+
+  @Test
+  void testTracing_successfulIdentityGetUser_httpjson() throws Exception {
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+
+    try (IdentityClient client =
+        TestClientInitializer.createHttpJsonIdentityClientOpentelemetry(tracingFactory)) {
+
+      try {
+        client.getUser(GetUserRequest.newBuilder().setName("users/test-user").build());
+      } catch (Exception e) {
+      }
+
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isNotEmpty();
+
+      SpanData attemptSpan =
+          spans.stream()
+              .filter(span -> span.getName().equals("GET v1beta1/{name=users/*}"))
+              .findFirst()
+              .orElseThrow(
+                  () -> new AssertionError("Attempt span 'GET v1beta1/{name=users/*}' not found"));
+                  
+      assertThat(
+              attemptSpan
+                  .getAttributes()
+                  .get(AttributeKey.stringKey("gcp.resource.destination.id")))
+          .isEqualTo("users/test-user");
+          
+      // TODO: add assertion for rpc.response.status_code (expected "OK" or "NOT_FOUND")
+    }
+  }
+
+  @Test
+  void testTracing_serverError_grpc() throws Exception {
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+    EchoSettings grpcEchoSettings = createEchoSettings(false);
+    EchoStub stub = createStubWithServiceName(grpcEchoSettings, tracingFactory);
+    try (EchoClient client = EchoClient.create(stub)) {
+      EchoRequest echoRequest = EchoRequest.newBuilder()
+          .setError(Status.newBuilder().setCode(StatusCode.Code.INTERNAL.ordinal()).build())
+          .build();
+
+      assertThrows(Exception.class, () -> client.echo(echoRequest));
+
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isNotEmpty();
+      SpanData attemptSpan = spans.get(0);
+
+      // TODO: add assertion for rpc.response.status_code (expected "INTERNAL")
+      // TODO: add assertion for error.type (expected "INTERNAL")
+    }
+  }
+
+  @Test
+  void testTracing_serverError_httpjson() throws Exception {
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+    EchoSettings httpJsonEchoSettings = createEchoSettings(true);
+    EchoStub stub = createStubWithServiceName(httpJsonEchoSettings, tracingFactory);
+    try (EchoClient client = EchoClient.create(stub)) {
+      EchoRequest echoRequest = EchoRequest.newBuilder()
+          .setError(Status.newBuilder().setCode(StatusCode.Code.INTERNAL.ordinal()).build())
+          .build();
+
+      assertThrows(Exception.class, () -> client.echo(echoRequest));
+
+      List<SpanData> spans = spanExporter.getFinishedSpanItems();
+      assertThat(spans).isNotEmpty();
+      SpanData attemptSpan = spans.get(0);
+      assertThat(attemptSpan.getName()).isEqualTo("POST v1beta1/echo:echo");
+
+      // TODO: add assertion for rpc.response.status_code (expected "INTERNAL")
+      // TODO: add assertion for error.type (expected "INTERNAL")
+    }
+  }
+
+  @Test
+  void testTracing_clientError_grpc() throws Exception {
+    RetrySettings retrySettings =
+        RetrySettings.newBuilder()
+            .setTotalTimeout(org.threeten.bp.Duration.ofMillis(1L))
+            .setMaxAttempts(1)
+            .build();
+    
+    EchoStubSettings.Builder grpcEchoSettingsBuilder = EchoStubSettings.newBuilder();
+    grpcEchoSettingsBuilder
+        .echoSettings()
+        .setRetrySettings(retrySettings);
+    EchoSettings grpcEchoSettings = EchoSettings.create(grpcEchoSettingsBuilder.build());
+    grpcEchoSettings =
+        grpcEchoSettings.toBuilder()
+            .setCredentialsProvider(NoCredentialsProvider.create())
+            .setTransportChannelProvider(EchoSettings.defaultGrpcTransportProviderBuilder().build())
+            .setEndpoint("localhost:12345")
+            .build();
+
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+    EchoStubSettings echoStubSettings = (EchoStubSettings) grpcEchoSettings.getStubSettings()
+        .toBuilder().setTracerFactory(tracingFactory).build();
+    EchoStub stub = echoStubSettings.createStub();
+    EchoClient client = EchoClient.create(stub);
+
+    EchoRequest echoRequest = EchoRequest.newBuilder().setContent("test").build();
+
+    assertThrows(Exception.class, () -> client.echo(echoRequest));
+
+    List<SpanData> spans = spanExporter.getFinishedSpanItems();
+    assertThat(spans).isNotEmpty();
+    SpanData attemptSpan = spans.get(0);
+
+    // TODO: add assertion for rpc.response.status_code (expected "UNAVAILABLE")
+    // TODO: add assertion for error.type (expected "UNAVAILABLE")
+  }
+
+  @Test
+  void testTracing_clientError_httpjson() throws Exception {
+    RetrySettings retrySettings =
+        RetrySettings.newBuilder()
+            .setTotalTimeout(org.threeten.bp.Duration.ofMillis(1L))
+            .setMaxAttempts(1)
+            .build();
+    
+    EchoStubSettings.Builder httpJsonEchoSettingsBuilder = EchoStubSettings.newHttpJsonBuilder();
+    httpJsonEchoSettingsBuilder
+        .echoSettings()
+        .setRetrySettings(retrySettings);
+    EchoSettings httpJsonEchoSettings = EchoSettings.create(httpJsonEchoSettingsBuilder.build());
+    httpJsonEchoSettings =
+        httpJsonEchoSettings.toBuilder()
+            .setCredentialsProvider(NoCredentialsProvider.create())
+            .setTransportChannelProvider(
+                EchoSettings.defaultHttpJsonTransportProviderBuilder()
+                    .setHttpTransport(
+                        new NetHttpTransport.Builder().doNotValidateCertificate().build())
+                    .setEndpoint("http://localhost:12345")
+                    .build())
+            .build();
+
+    SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
+    EchoStubSettings echoStubSettings = (EchoStubSettings) httpJsonEchoSettings.getStubSettings()
+        .toBuilder().setTracerFactory(tracingFactory).build();
+    EchoStub stub = echoStubSettings.createStub();
+    EchoClient client = EchoClient.create(stub);
+
+    EchoRequest echoRequest = EchoRequest.newBuilder().setContent("test").build();
+
+    assertThrows(Exception.class, () -> client.echo(echoRequest));
+
+    List<SpanData> spans = spanExporter.getFinishedSpanItems();
+    assertThat(spans).isNotEmpty();
+    SpanData attemptSpan = spans.get(0);
+    assertThat(attemptSpan.getName()).isEqualTo("POST v1beta1/echo:echo");
+
+    // TODO: add assertion for rpc.response.status_code (expected "UNAVAILABLE")
+    // TODO: add assertion for error.type (expected "UNAVAILABLE")
+  }
+
+  @Test
   void testTracing_successfulEcho_grpc() throws Exception {
     SpanTracerFactory tracingFactory = new SpanTracerFactory(openTelemetrySdk);
 
@@ -134,6 +341,7 @@ class ITOtelTracing {
               .findFirst()
               .orElseThrow(() -> new AssertionError("Incorrect span name"));
       assertThat(attemptSpan.getKind()).isEqualTo(SpanKind.CLIENT);
+      // TODO: update to match specification (gcp.client.language is removed)
       assertThat(
               attemptSpan
                   .getAttributes()
@@ -162,18 +370,13 @@ class ITOtelTracing {
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.RPC_SYSTEM_NAME_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("rpc.system.name")))
           .isEqualTo("grpc");
+      // TODO: add assertion for gcp.client.service (expected "showcase")
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(
-                      AttributeKey.stringKey(ObservabilityAttributes.GCP_CLIENT_SERVICE_ATTRIBUTE)))
-          .isEqualTo("showcase");
-      assertThat(
-              attemptSpan
-                  .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.GRPC_RPC_METHOD_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("rpc.method")))
           .isEqualTo("google.showcase.v1beta1.Echo/Echo");
       assertThat(
               attemptSpan
@@ -205,6 +408,7 @@ class ITOtelTracing {
               .orElseThrow(
                   () -> new AssertionError("Attempt span 'POST v1beta1/echo:echo' not found"));
       assertThat(attemptSpan.getKind()).isEqualTo(SpanKind.CLIENT);
+      // TODO: update to match specification (gcp.client.language is removed)
       assertThat(
               attemptSpan
                   .getAttributes()
@@ -213,38 +417,34 @@ class ITOtelTracing {
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.SERVER_ADDRESS_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("server.address")))
           .isEqualTo(SHOWCASE_SERVER_ADDRESS);
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.longKey(ObservabilityAttributes.SERVER_PORT_ATTRIBUTE)))
+                  .get(AttributeKey.longKey("server.port")))
           .isEqualTo(SHOWCASE_SERVER_PORT);
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.REPO_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("gcp.client.repo")))
           .isEqualTo(SHOWCASE_REPO);
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.ARTIFACT_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("gcp.client.artifact")))
           .isEqualTo(SHOWCASE_ARTIFACT);
+      // TODO: add assertion for gcp.client.service (expected "showcase")
+      
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(
-                      AttributeKey.stringKey(ObservabilityAttributes.GCP_CLIENT_SERVICE_ATTRIBUTE)))
-          .isEqualTo("showcase");
-      assertThat(
-              attemptSpan
-                  .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.HTTP_METHOD_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("http.request.method")))
           .isEqualTo("POST");
       assertThat(
               attemptSpan
                   .getAttributes()
-                  .get(AttributeKey.stringKey(ObservabilityAttributes.HTTP_URL_TEMPLATE_ATTRIBUTE)))
+                  .get(AttributeKey.stringKey("url.template")))
           .isEqualTo("v1beta1/echo:echo");
       assertThat(
               attemptSpan
@@ -334,7 +534,7 @@ class ITOtelTracing {
                             .asMap()
                             .get(
                                 AttributeKey.longKey(
-                                    ObservabilityAttributes.GRPC_RESEND_COUNT_ATTRIBUTE)))
+                                    "gcp.grpc.resend_count")))
             .filter(java.util.Objects::nonNull)
             .sorted()
             .collect(java.util.stream.Collectors.toList());
@@ -344,6 +544,9 @@ class ITOtelTracing {
             .boxed()
             .collect(java.util.stream.Collectors.toList());
     assertThat(resendCounts).containsExactlyElementsIn(expectedCounts).inOrder();
+
+    // TODO: add assertion for error.type on the failed spans (expected "UNAVAILABLE")
+    // TODO: add assertion for rpc.response.status_code on the failed spans (expected "UNAVAILABLE")
   }
 
   @Test
@@ -412,7 +615,7 @@ class ITOtelTracing {
                             .asMap()
                             .get(
                                 AttributeKey.longKey(
-                                    ObservabilityAttributes.HTTP_RESEND_COUNT_ATTRIBUTE)))
+                                    "http.request.resend_count")))
             .filter(java.util.Objects::nonNull)
             .sorted()
             .collect(java.util.stream.Collectors.toList());
@@ -422,6 +625,10 @@ class ITOtelTracing {
             .boxed()
             .collect(java.util.stream.Collectors.toList());
     assertThat(resendCounts).containsExactlyElementsIn(expectedCounts).inOrder();
+
+    // TODO: add assertion for error.type on the failed spans (expected "UNAVAILABLE")
+    // TODO: add assertion for rpc.response.status_code on the failed spans (expected "UNAVAILABLE")
+    // TODO: add assertion for http.response.status_code on the failed spans (expected 503)
   }
 
   private void verifyErrorTypeAttribute(String expectedErrorType) {
