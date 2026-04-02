@@ -161,7 +161,7 @@ class ITOtelTracing {
                   .get(AttributeKey.stringKey("gcp.resource.destination.id")))
           .isEqualTo("users/test-user");
           
-      // TODO: add assertion for rpc.response.status_code (expected "OK" or "NOT_FOUND")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isAnyOf("OK", "NOT_FOUND");
     }
   }
 
@@ -193,7 +193,7 @@ class ITOtelTracing {
                   .get(AttributeKey.stringKey("gcp.resource.destination.id")))
           .isEqualTo("users/test-user");
           
-      // TODO: add assertion for rpc.response.status_code (expected "OK" or "NOT_FOUND")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isAnyOf("OK", "NOT_FOUND");
     }
   }
 
@@ -213,8 +213,8 @@ class ITOtelTracing {
       assertThat(spans).isNotEmpty();
       SpanData attemptSpan = spans.get(0);
 
-      // TODO: add assertion for rpc.response.status_code (expected "INTERNAL")
-      // TODO: add assertion for error.type (expected "INTERNAL")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("INTERNAL");
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("INTERNAL");
     }
   }
 
@@ -235,8 +235,8 @@ class ITOtelTracing {
       SpanData attemptSpan = spans.get(0);
       assertThat(attemptSpan.getName()).isEqualTo("POST v1beta1/echo:echo");
 
-      // TODO: add assertion for rpc.response.status_code (expected "INTERNAL")
-      // TODO: add assertion for error.type (expected "INTERNAL")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("INTERNAL");
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("INTERNAL");
     }
   }
 
@@ -274,8 +274,8 @@ class ITOtelTracing {
     assertThat(spans).isNotEmpty();
     SpanData attemptSpan = spans.get(0);
 
-    // TODO: add assertion for rpc.response.status_code (expected "UNAVAILABLE")
-    // TODO: add assertion for error.type (expected "UNAVAILABLE")
+    assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("UNAVAILABLE");
+    assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("UNAVAILABLE");
   }
 
   @Test
@@ -317,8 +317,8 @@ class ITOtelTracing {
     SpanData attemptSpan = spans.get(0);
     assertThat(attemptSpan.getName()).isEqualTo("POST v1beta1/echo:echo");
 
-    // TODO: add assertion for rpc.response.status_code (expected "UNAVAILABLE")
-    // TODO: add assertion for error.type (expected "UNAVAILABLE")
+    assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("UNAVAILABLE");
+    assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("UNAVAILABLE");
   }
 
   @Test
@@ -341,12 +341,7 @@ class ITOtelTracing {
               .findFirst()
               .orElseThrow(() -> new AssertionError("Incorrect span name"));
       assertThat(attemptSpan.getKind()).isEqualTo(SpanKind.CLIENT);
-      // TODO: update to match specification (gcp.client.language is removed)
-      assertThat(
-              attemptSpan
-                  .getAttributes()
-                  .get(AttributeKey.stringKey(SpanTracer.LANGUAGE_ATTRIBUTE)))
-          .isEqualTo(SpanTracer.DEFAULT_LANGUAGE);
+      // Removed gcp.client.language assertion as per specification
       assertThat(
               attemptSpan
                   .getAttributes()
@@ -372,7 +367,7 @@ class ITOtelTracing {
                   .getAttributes()
                   .get(AttributeKey.stringKey("rpc.system.name")))
           .isEqualTo("grpc");
-      // TODO: add assertion for gcp.client.service (expected "showcase")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("gcp.client.service"))).isEqualTo("showcase");
       assertThat(
               attemptSpan
                   .getAttributes()
@@ -408,12 +403,7 @@ class ITOtelTracing {
               .orElseThrow(
                   () -> new AssertionError("Attempt span 'POST v1beta1/echo:echo' not found"));
       assertThat(attemptSpan.getKind()).isEqualTo(SpanKind.CLIENT);
-      // TODO: update to match specification (gcp.client.language is removed)
-      assertThat(
-              attemptSpan
-                  .getAttributes()
-                  .get(AttributeKey.stringKey(SpanTracer.LANGUAGE_ATTRIBUTE)))
-          .isEqualTo(SpanTracer.DEFAULT_LANGUAGE);
+      // Removed gcp.client.language assertion as per specification
       assertThat(
               attemptSpan
                   .getAttributes()
@@ -434,7 +424,7 @@ class ITOtelTracing {
                   .getAttributes()
                   .get(AttributeKey.stringKey("gcp.client.artifact")))
           .isEqualTo(SHOWCASE_ARTIFACT);
-      // TODO: add assertion for gcp.client.service (expected "showcase")
+      assertThat(attemptSpan.getAttributes().get(AttributeKey.stringKey("gcp.client.service"))).isEqualTo("showcase");
       
       assertThat(
               attemptSpan
@@ -545,8 +535,14 @@ class ITOtelTracing {
             .collect(java.util.stream.Collectors.toList());
     assertThat(resendCounts).containsExactlyElementsIn(expectedCounts).inOrder();
 
-    // TODO: add assertion for error.type on the failed spans (expected "UNAVAILABLE")
-    // TODO: add assertion for rpc.response.status_code on the failed spans (expected "UNAVAILABLE")
+    for (int i = 0; i < expectedCounts.size(); i++) {
+      SpanData failedSpan = spans.get(i);
+      assertThat(failedSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("UNAVAILABLE");
+    }
+    for (int i = 0; i < expectedCounts.size(); i++) {
+      SpanData failedSpan = spans.get(i);
+      assertThat(failedSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("UNAVAILABLE");
+    }
   }
 
   @Test
@@ -626,9 +622,18 @@ class ITOtelTracing {
             .collect(java.util.stream.Collectors.toList());
     assertThat(resendCounts).containsExactlyElementsIn(expectedCounts).inOrder();
 
-    // TODO: add assertion for error.type on the failed spans (expected "UNAVAILABLE")
-    // TODO: add assertion for rpc.response.status_code on the failed spans (expected "UNAVAILABLE")
-    // TODO: add assertion for http.response.status_code on the failed spans (expected 503)
+    for (int i = 0; i < expectedCounts.size(); i++) {
+      SpanData failedSpan = spans.get(i);
+      assertThat(failedSpan.getAttributes().get(AttributeKey.stringKey("error.type"))).isEqualTo("UNAVAILABLE");
+    }
+    for (int i = 0; i < expectedCounts.size(); i++) {
+      SpanData failedSpan = spans.get(i);
+      assertThat(failedSpan.getAttributes().get(AttributeKey.stringKey("rpc.response.status_code"))).isEqualTo("UNAVAILABLE");
+    }
+    for (int i = 0; i < expectedCounts.size(); i++) {
+      SpanData failedSpan = spans.get(i);
+      assertThat(failedSpan.getAttributes().get(AttributeKey.longKey("http.response.status_code"))).isEqualTo(503L);
+    }
   }
 
   private void verifyErrorTypeAttribute(String expectedErrorType) {
@@ -860,7 +865,7 @@ class ITOtelTracing {
               httpSuccessSpan
                   .getAttributes()
                   .get(
-                      AttributeKey.longKey(ObservabilityAttributes.HTTP_RESPONSE_STATUS_ATTRIBUTE)))
+                      AttributeKey.longKey("http.response.status_code")))
           .isEqualTo(200L);
 
       SpanData httpErrorSpan = spans.get(1);
@@ -868,7 +873,7 @@ class ITOtelTracing {
               httpErrorSpan
                   .getAttributes()
                   .get(
-                      AttributeKey.longKey(ObservabilityAttributes.HTTP_RESPONSE_STATUS_ATTRIBUTE)))
+                      AttributeKey.longKey("http.response.status_code")))
           .isEqualTo((long) StatusCode.Code.INVALID_ARGUMENT.getHttpStatusCode());
     }
   }

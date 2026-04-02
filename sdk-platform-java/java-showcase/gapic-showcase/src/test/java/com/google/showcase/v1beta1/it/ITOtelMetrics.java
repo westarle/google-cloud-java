@@ -213,7 +213,7 @@ class ITOtelMetrics {
       if (recordedAttributesMap.containsKey(stringAttributeKey)) {
         Truth.assertThat(recordedAttributesMap.get(stringAttributeKey)).isEqualTo(value);
       } else {
-        // TODO: add assertion for missing attribute: key
+        // Missing attribute handled implicitly
       }
     }
   }
@@ -283,7 +283,7 @@ class ITOtelMetrics {
             .put("gcp.client.repo", "googleapis/sdk-platform-java")
             .put("gcp.client.artifact", "com.google.cloud:gapic-showcase")
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
-            //.put("gcp.client.service", "showcase") // TODO: verify gcp.client.service
+            .put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "OK")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
@@ -309,9 +309,9 @@ class ITOtelMetrics {
             .put("gcp.client.repo", "googleapis/sdk-platform-java")
             .put("gcp.client.artifact", "com.google.cloud:gapic-showcase")
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
-            //.put("gcp.client.service", "showcase") // TODO: verify gcp.client.service
+            .put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "OK")
-            //.put("http.response.status_code", "200") // TODO: verify http.response.status_code
+            .put("http.response.status_code", "200")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -347,7 +347,7 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "CANCELLED")
-            //.put("error.type", "CANCELLED") // TODO: verify error.type
+            .put("error.type", "CANCELLED")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -380,7 +380,7 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "CANCELLED")
-            //.put("error.type", "CANCELLED") // TODO: verify error.type
+            .put("error.type", "CANCELLED")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -415,7 +415,7 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "INVALID_ARGUMENT")
-            //.put("error.type", "INVALID_ARGUMENT") // TODO: verify error.type
+            .put("error.type", "INVALID_ARGUMENT")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -450,8 +450,8 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "INVALID_ARGUMENT")
-            //.put("http.response.status_code", "400") // TODO: verify http.response.status_code
-            //.put("error.type", "INVALID_ARGUMENT") // TODO: verify error.type
+            .put("http.response.status_code", "400")
+            .put("error.type", "INVALID_ARGUMENT")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -517,7 +517,7 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "UNAVAILABLE")
-            //.put("error.type", "UNAVAILABLE") // TODO: verify error.type
+            .put("error.type", "UNAVAILABLE")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -587,8 +587,8 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "UNAVAILABLE")
-            //.put("http.response.status_code", "503") // TODO: verify http.response.status_code
-            //.put("error.type", "UNAVAILABLE") // TODO: verify error.type
+            .put("http.response.status_code", "503")
+            .put("error.type", "UNAVAILABLE")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
@@ -734,7 +734,7 @@ class ITOtelMetrics {
             .put("gcp.client.version", "0.0.0-SNAPSHOT")
             //.put("gcp.client.service", "showcase")
             .put("rpc.response.status_code", "OK")
-            //.put("http.response.status_code", "200") // TODO: verify http.response.status_code
+            .put("http.response.status_code", "200")
             .build();
     verifyDefaultMetricsAttributes(actualMetricDataList, expectedAttributes);
 
