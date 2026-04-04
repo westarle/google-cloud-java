@@ -28,6 +28,7 @@ import com.google.api.client.testing.http.MockLowLevelHttpRequest;
 import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.rpc.ApiException;
+import com.google.api.gax.rpc.StatusCode;
 import com.google.api.gax.tracing.LoggingTracerFactory;
 import com.google.api.gax.tracing.ObservabilityAttributes;
 import com.google.protobuf.Any;
@@ -38,6 +39,7 @@ import com.google.showcase.v1beta1.EchoRequest;
 import com.google.showcase.v1beta1.EchoSettings;
 import com.google.showcase.v1beta1.it.util.TestClientInitializer;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +49,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
 
 public class ITActionableErrorsLogging {
@@ -58,9 +61,11 @@ public class ITActionableErrorsLogging {
   @BeforeAll
   static void createClients() throws Exception {
     grpcClient =
-        TestClientInitializer.createGrpcEchoClientOpentelemetry(new LoggingTracerFactory());
+        TestClientInitializer.createGrpcEchoClientOpentelemetry(
+            com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     httpjsonClient =
-        TestClientInitializer.createHttpJsonEchoClientOpentelemetry(new LoggingTracerFactory());
+        TestClientInitializer.createHttpJsonEchoClientOpentelemetry(
+            com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
   }
 
   @AfterAll
@@ -119,6 +124,14 @@ public class ITActionableErrorsLogging {
             .addDetails(Any.pack(errorInfo))
             .build();
     return EchoRequest.newBuilder().setError(status).build();
+  }
+
+  private void setLoggingEnabled(boolean enabled) throws Exception {
+    java.lang.reflect.Method method =
+        com.google.api.gax.logging.LoggingUtils.class.getDeclaredMethod(
+            "setLoggingEnabled", boolean.class);
+    method.setAccessible(true);
+    method.invoke(null, enabled);
   }
 
   @Test
@@ -211,6 +224,42 @@ public class ITActionableErrorsLogging {
   }
 
   @Test
+  void testHttpJson_noLogsEmittedUnlessEnabled() throws Exception {
+    setLoggingEnabled(false);
+    try {
+      EchoRequest request = buildErrorRequest();
+      assertThrows(ApiException.class, () -> httpjsonClient.echo(request));
+      assertThat(testAppender.events.size()).isEqualTo(0);
+    } finally {
+      setLoggingEnabled(true);
+    }
+  }
+
+  @Test
+  void testHttpJson_logsForRetries() throws Exception {
+    com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
+        com.google.showcase.v1beta1.stub.EchoStubSettings.newHttpJsonBuilder();
+    stubSettingsBuilder
+        .echoSettings()
+        .setRetrySettings(
+            com.google.api.gax.retrying.RetrySettings.newBuilder()
+                .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
+                .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
+                .setMaxAttempts(3)
+                .build())
+        .setRetryableCodes(Collections.singleton(StatusCode.Code.UNAVAILABLE));
+    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
+    stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
+    stubSettingsBuilder.setEndpoint("localhost:1");
+
+    try (com.google.showcase.v1beta1.stub.EchoStub stub = stubSettingsBuilder.build().createStub();
+        EchoClient client = EchoClient.create(stub)) {
+      assertThrows(ApiException.class, () -> client.echo(EchoRequest.newBuilder().build()));
+      assertThat(testAppender.events.size()).isEqualTo(3);
+    }
+  }
+
+  @Test
   void testHttpJson_clientLevelFailureAttributes() throws Exception {
     com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
         com.google.showcase.v1beta1.stub.EchoStubSettings.newHttpJsonBuilder();
@@ -222,7 +271,7 @@ public class ITActionableErrorsLogging {
                 .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
                 .setMaxAttempts(1)
                 .build());
-    stubSettingsBuilder.setTracerFactory(new LoggingTracerFactory());
+    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
     stubSettingsBuilder.setEndpoint("localhost:1");
 
@@ -269,6 +318,42 @@ public class ITActionableErrorsLogging {
   }
 
   @Test
+  void testGrpc_noLogsEmittedUnlessEnabled() throws Exception {
+    setLoggingEnabled(false);
+    try {
+      EchoRequest request = buildErrorRequest();
+      assertThrows(ApiException.class, () -> grpcClient.echo(request));
+      assertThat(testAppender.events.size()).isEqualTo(0);
+    } finally {
+      setLoggingEnabled(true);
+    }
+  }
+
+  @Test
+  void testGrpc_logsForRetries() throws Exception {
+    com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
+        com.google.showcase.v1beta1.stub.EchoStubSettings.newBuilder();
+    stubSettingsBuilder
+        .echoSettings()
+        .setRetrySettings(
+            com.google.api.gax.retrying.RetrySettings.newBuilder()
+                .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
+                .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
+                .setMaxAttempts(3)
+                .build())
+        .setRetryableCodes(Collections.singleton(StatusCode.Code.UNAVAILABLE));
+    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
+    stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
+    stubSettingsBuilder.setEndpoint("localhost:1");
+
+    try (com.google.showcase.v1beta1.stub.EchoStub stub = stubSettingsBuilder.build().createStub();
+        EchoClient client = EchoClient.create(stub)) {
+      assertThrows(ApiException.class, () -> client.echo(EchoRequest.newBuilder().build()));
+      assertThat(testAppender.events.size()).isEqualTo(3);
+    }
+  }
+
+  @Test
   void testGrpc_clientLevelFailureAttributes() throws Exception {
     com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
         com.google.showcase.v1beta1.stub.EchoStubSettings.newBuilder();
@@ -280,7 +365,7 @@ public class ITActionableErrorsLogging {
                 .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
                 .setMaxAttempts(1)
                 .build());
-    stubSettingsBuilder.setTracerFactory(new LoggingTracerFactory());
+    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
     stubSettingsBuilder.setEndpoint("localhost:1");
 
