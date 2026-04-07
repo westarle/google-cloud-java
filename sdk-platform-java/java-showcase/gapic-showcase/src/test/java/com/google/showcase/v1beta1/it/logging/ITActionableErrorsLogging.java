@@ -39,7 +39,6 @@ import com.google.showcase.v1beta1.EchoRequest;
 import com.google.showcase.v1beta1.EchoSettings;
 import com.google.showcase.v1beta1.it.util.TestClientInitializer;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +48,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.slf4j.event.KeyValuePair;
 
 public class ITActionableErrorsLogging {
@@ -373,7 +371,7 @@ public class ITActionableErrorsLogging {
             httpJsonEchoSettings.getStubSettings().toBuilder()
                 .setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance())
                 .build();
-    
+
     com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
         echoStubSettings.toBuilder();
     stubSettingsBuilder
@@ -405,7 +403,8 @@ public class ITActionableErrorsLogging {
                 .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
                 .setMaxAttempts(1)
                 .build());
-    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
+    stubSettingsBuilder.setTracerFactory(
+        com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
     stubSettingsBuilder.setEndpoint("localhost:1");
 
@@ -476,7 +475,8 @@ public class ITActionableErrorsLogging {
                 .setMaxAttempts(3)
                 .build())
         .setRetryableCodes(StatusCode.Code.UNAVAILABLE, StatusCode.Code.UNKNOWN);
-    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
+    stubSettingsBuilder.setTracerFactory(
+        com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
     stubSettingsBuilder.setEndpoint("localhost:1");
 
@@ -499,7 +499,8 @@ public class ITActionableErrorsLogging {
                 .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
                 .setMaxAttempts(1)
                 .build());
-    stubSettingsBuilder.setTracerFactory(com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
+    stubSettingsBuilder.setTracerFactory(
+        com.google.api.gax.tracing.BaseApiTracerFactory.getInstance());
     stubSettingsBuilder.setCredentialsProvider(NoCredentialsProvider.create());
     stubSettingsBuilder.setEndpoint("localhost:1");
 

@@ -148,10 +148,12 @@ class ITCompositeTracer {
   @Test
   void testActionableErrorLogsRecordedInContextOfT4Span_grpc() throws Exception {
     ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("com.google.api.gax.tracing.LoggingTracer");
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger("com.google.api.gax.tracing.LoggingTracer");
     logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
-    
-    java.util.List<io.opentelemetry.api.trace.SpanContext> capturedSpanContexts = new java.util.ArrayList<>();
+
+    java.util.List<io.opentelemetry.api.trace.SpanContext> capturedSpanContexts =
+        new java.util.ArrayList<>();
     ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent> testAppender =
         new ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>() {
           @Override
@@ -171,31 +173,37 @@ class ITCompositeTracer {
 
       com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
           com.google.showcase.v1beta1.stub.EchoStubSettings.newBuilder();
-      stubSettingsBuilder.echoSettings().setRetrySettings(
-          com.google.api.gax.retrying.RetrySettings.newBuilder()
-              .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
-              .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
-              .setMaxAttempts(1)
-              .build());
-      // We manually build CompositeTracerFactory to guarantee SpanTracer executes its makeCurrent() before LoggingTracer
+      stubSettingsBuilder
+          .echoSettings()
+          .setRetrySettings(
+              com.google.api.gax.retrying.RetrySettings.newBuilder()
+                  .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
+                  .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
+                  .setMaxAttempts(1)
+                  .build());
+      // We manually build CompositeTracerFactory to guarantee SpanTracer executes its makeCurrent()
+      // before LoggingTracer
       com.google.api.gax.tracing.CompositeTracerFactory compositeTracerFactory =
           new com.google.api.gax.tracing.CompositeTracerFactory(
               Arrays.asList(
                   new SpanTracerFactory(openTelemetrySdk),
                   new com.google.api.gax.tracing.LoggingTracerFactory()));
       stubSettingsBuilder.setTracerFactory(compositeTracerFactory);
-      stubSettingsBuilder.setCredentialsProvider(com.google.api.gax.core.NoCredentialsProvider.create());
+      stubSettingsBuilder.setCredentialsProvider(
+          com.google.api.gax.core.NoCredentialsProvider.create());
       stubSettingsBuilder.setEndpoint("localhost:1");
 
-      try (com.google.showcase.v1beta1.stub.EchoStub stub = stubSettingsBuilder.build().createStub();
+      try (com.google.showcase.v1beta1.stub.EchoStub stub =
+              stubSettingsBuilder.build().createStub();
           EchoClient client = EchoClient.create(stub)) {
         org.junit.jupiter.api.Assertions.assertThrows(
             com.google.api.gax.rpc.ApiException.class,
             () -> client.echo(EchoRequest.newBuilder().build()));
 
         assertThat(capturedSpanContexts).isNotEmpty();
-        io.opentelemetry.api.trace.SpanContext activeContextDuringLog = capturedSpanContexts.get(capturedSpanContexts.size() - 1);
-        
+        io.opentelemetry.api.trace.SpanContext activeContextDuringLog =
+            capturedSpanContexts.get(capturedSpanContexts.size() - 1);
+
         List<SpanData> actualSpans = spanExporter.getFinishedSpanItems();
         assertThat(actualSpans).isNotEmpty();
         SpanData attemptSpan = actualSpans.get(0);
@@ -213,10 +221,12 @@ class ITCompositeTracer {
   @Test
   void testActionableErrorLogsRecordedInContextOfT4Span_httpJson() throws Exception {
     ch.qos.logback.classic.Logger logger =
-        (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger("com.google.api.gax.tracing.LoggingTracer");
+        (ch.qos.logback.classic.Logger)
+            org.slf4j.LoggerFactory.getLogger("com.google.api.gax.tracing.LoggingTracer");
     logger.setLevel(ch.qos.logback.classic.Level.DEBUG);
-    
-    java.util.List<io.opentelemetry.api.trace.SpanContext> capturedSpanContexts = new java.util.ArrayList<>();
+
+    java.util.List<io.opentelemetry.api.trace.SpanContext> capturedSpanContexts =
+        new java.util.ArrayList<>();
     ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent> testAppender =
         new ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>() {
           @Override
@@ -236,30 +246,35 @@ class ITCompositeTracer {
 
       com.google.showcase.v1beta1.stub.EchoStubSettings.Builder stubSettingsBuilder =
           com.google.showcase.v1beta1.stub.EchoStubSettings.newHttpJsonBuilder();
-      stubSettingsBuilder.echoSettings().setRetrySettings(
-          com.google.api.gax.retrying.RetrySettings.newBuilder()
-              .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
-              .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
-              .setMaxAttempts(1)
-              .build());
+      stubSettingsBuilder
+          .echoSettings()
+          .setRetrySettings(
+              com.google.api.gax.retrying.RetrySettings.newBuilder()
+                  .setInitialRpcTimeoutDuration(java.time.Duration.ofMillis(0))
+                  .setTotalTimeoutDuration(java.time.Duration.ofMillis(0))
+                  .setMaxAttempts(1)
+                  .build());
       com.google.api.gax.tracing.CompositeTracerFactory compositeTracerFactory =
           new com.google.api.gax.tracing.CompositeTracerFactory(
               Arrays.asList(
                   new SpanTracerFactory(openTelemetrySdk),
                   new com.google.api.gax.tracing.LoggingTracerFactory()));
       stubSettingsBuilder.setTracerFactory(compositeTracerFactory);
-      stubSettingsBuilder.setCredentialsProvider(com.google.api.gax.core.NoCredentialsProvider.create());
+      stubSettingsBuilder.setCredentialsProvider(
+          com.google.api.gax.core.NoCredentialsProvider.create());
       stubSettingsBuilder.setEndpoint("localhost:1");
 
-      try (com.google.showcase.v1beta1.stub.EchoStub stub = stubSettingsBuilder.build().createStub();
+      try (com.google.showcase.v1beta1.stub.EchoStub stub =
+              stubSettingsBuilder.build().createStub();
           EchoClient client = EchoClient.create(stub)) {
         org.junit.jupiter.api.Assertions.assertThrows(
             com.google.api.gax.rpc.ApiException.class,
             () -> client.echo(EchoRequest.newBuilder().build()));
 
         assertThat(capturedSpanContexts).isNotEmpty();
-        io.opentelemetry.api.trace.SpanContext activeContextDuringLog = capturedSpanContexts.get(capturedSpanContexts.size() - 1);
-        
+        io.opentelemetry.api.trace.SpanContext activeContextDuringLog =
+            capturedSpanContexts.get(capturedSpanContexts.size() - 1);
+
         List<SpanData> actualSpans = spanExporter.getFinishedSpanItems();
         assertThat(actualSpans).isNotEmpty();
         SpanData attemptSpan = actualSpans.get(0);

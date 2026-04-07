@@ -30,6 +30,10 @@
 
 package com.google.showcase.v1beta1.it;
 
+import static com.google.common.truth.Truth.assertThat;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertThrows;
+
 import com.google.api.client.http.HttpTransport;
 import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.retrying.RetrySettings;
@@ -55,18 +59,13 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.data.MetricData;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Collection;
-
-import static com.google.common.truth.Truth.assertThat;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertThrows;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class ITOtelGoldenMetrics {
   private static final String SHOWCASE_SERVER_ADDRESS = "localhost";
@@ -501,7 +500,8 @@ class ITOtelGoldenMetrics {
             .setMaxAttempts(3)
             .build();
 
-    java.util.concurrent.atomic.AtomicInteger attemptCount = new java.util.concurrent.atomic.AtomicInteger(0);
+    java.util.concurrent.atomic.AtomicInteger attemptCount =
+        new java.util.concurrent.atomic.AtomicInteger(0);
 
     ClientInterceptor interceptor =
         new ClientInterceptor() {
@@ -534,7 +534,8 @@ class ITOtelGoldenMetrics {
           }
         };
 
-    java.util.Set<StatusCode.Code> retryableCodes = java.util.Collections.singleton(StatusCode.Code.UNAVAILABLE);
+    java.util.Set<StatusCode.Code> retryableCodes =
+        java.util.Collections.singleton(StatusCode.Code.UNAVAILABLE);
 
     try (EchoClient client =
         TestClientInitializer.createGrpcEchoClientOpentelemetry(
@@ -579,7 +580,8 @@ class ITOtelGoldenMetrics {
             .setMaxAttempts(3)
             .build();
 
-    java.util.concurrent.atomic.AtomicInteger requestCount = new java.util.concurrent.atomic.AtomicInteger(0);
+    java.util.concurrent.atomic.AtomicInteger requestCount =
+        new java.util.concurrent.atomic.AtomicInteger(0);
 
     HttpTransport mockTransport =
         new HttpTransport() {
@@ -601,65 +603,102 @@ class ITOtelGoldenMetrics {
                     }
 
                     @Override
-                    public String getContentEncoding() { return null; }
+                    public String getContentEncoding() {
+                      return null;
+                    }
 
                     @Override
-                    public long getContentLength() { return 2; }
+                    public long getContentLength() {
+                      return 2;
+                    }
 
                     @Override
-                    public String getContentType() { return "application/json"; }
+                    public String getContentType() {
+                      return "application/json";
+                    }
 
                     @Override
-                    public String getStatusLine() { return "HTTP/1.1 503 Service Unavailable"; }
+                    public String getStatusLine() {
+                      return "HTTP/1.1 503 Service Unavailable";
+                    }
 
                     @Override
-                    public int getStatusCode() { return 503; }
+                    public int getStatusCode() {
+                      return 503;
+                    }
 
                     @Override
-                    public String getReasonPhrase() { return "Service Unavailable"; }
+                    public String getReasonPhrase() {
+                      return "Service Unavailable";
+                    }
 
                     @Override
-                    public int getHeaderCount() { return 0; }
+                    public int getHeaderCount() {
+                      return 0;
+                    }
 
                     @Override
-                    public String getHeaderName(int index) { return null; }
+                    public String getHeaderName(int index) {
+                      return null;
+                    }
 
                     @Override
-                    public String getHeaderValue(int index) { return null; }
+                    public String getHeaderValue(int index) {
+                      return null;
+                    }
                   };
                 } else {
                   return new com.google.api.client.http.LowLevelHttpResponse() {
                     @Override
                     public InputStream getContent() {
-                      return new ByteArrayInputStream("{\"content\":\"metrics-test\"}".getBytes(UTF_8));
+                      return new ByteArrayInputStream(
+                          "{\"content\":\"metrics-test\"}".getBytes(UTF_8));
                     }
 
                     @Override
-                    public String getContentEncoding() { return null; }
+                    public String getContentEncoding() {
+                      return null;
+                    }
 
                     @Override
-                    public long getContentLength() { return 24; }
+                    public long getContentLength() {
+                      return 24;
+                    }
 
                     @Override
-                    public String getContentType() { return "application/json"; }
+                    public String getContentType() {
+                      return "application/json";
+                    }
 
                     @Override
-                    public String getStatusLine() { return "HTTP/1.1 200 OK"; }
+                    public String getStatusLine() {
+                      return "HTTP/1.1 200 OK";
+                    }
 
                     @Override
-                    public int getStatusCode() { return 200; }
+                    public int getStatusCode() {
+                      return 200;
+                    }
 
                     @Override
-                    public String getReasonPhrase() { return "OK"; }
+                    public String getReasonPhrase() {
+                      return "OK";
+                    }
 
                     @Override
-                    public int getHeaderCount() { return 0; }
+                    public int getHeaderCount() {
+                      return 0;
+                    }
 
                     @Override
-                    public String getHeaderName(int index) { return null; }
+                    public String getHeaderName(int index) {
+                      return null;
+                    }
 
                     @Override
-                    public String getHeaderValue(int index) { return null; }
+                    public String getHeaderValue(int index) {
+                      return null;
+                    }
                   };
                 }
               }
@@ -667,7 +706,8 @@ class ITOtelGoldenMetrics {
           }
         };
 
-    java.util.Set<StatusCode.Code> retryableCodes = java.util.Collections.singleton(StatusCode.Code.UNAVAILABLE);
+    java.util.Set<StatusCode.Code> retryableCodes =
+        java.util.Collections.singleton(StatusCode.Code.UNAVAILABLE);
 
     try (EchoClient client =
         TestClientInitializer.createHttpJsonEchoClientOpentelemetry(
