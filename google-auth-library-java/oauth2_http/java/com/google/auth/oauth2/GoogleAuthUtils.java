@@ -69,7 +69,9 @@ public class GoogleAuthUtils {
     String envPath = provider.getEnv("CLOUDSDK_CONFIG");
     if (envPath != null) {
       cloudConfigPath = new File(envPath);
-    } else if (provider.getOsName().indexOf("windows") >= 0) {
+    } else if (provider.getOsName().indexOf("windows") >= 0
+        && provider.getEnv("APPDATA") != null
+        && !provider.getEnv("APPDATA").isEmpty()) {
       File appDataPath = new File(provider.getEnv("APPDATA"));
       cloudConfigPath = new File(appDataPath, provider.CLOUDSDK_CONFIG_DIRECTORY);
     } else {

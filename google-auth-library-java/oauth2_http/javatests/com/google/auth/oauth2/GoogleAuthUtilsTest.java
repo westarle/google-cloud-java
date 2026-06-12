@@ -56,4 +56,23 @@ class GoogleAuthUtilsTest {
     assertNotNull(obtainedPath);
     assertEquals(obtainedPath, wellKnownFile.getAbsolutePath());
   }
+
+  @Test
+  void getWellKnownCredentialsPath_windows_no_appdata() {
+    DefaultCredentialsProviderTest.TestDefaultCredentialsProvider provider =
+        new DefaultCredentialsProviderTest.TestDefaultCredentialsProvider();
+    provider.setProperty("os.name", "windows");
+
+    // This should not throw NullPointerException even when APPDATA is unset (null)
+    String obtainedPath = GoogleAuthUtils.getWellKnownCredentialsPath(provider);
+
+    assertNotNull(obtainedPath);
+    // Since APPDATA is null, it should fall back to standard home dir logic
+    File homeDir = new File("");
+    File configDir = new File(homeDir, ".config");
+    File cloudConfigDir = new File(configDir, DefaultCredentialsProvider.CLOUDSDK_CONFIG_DIRECTORY);
+    File wellKnownFile =
+        new File(cloudConfigDir, DefaultCredentialsProvider.WELL_KNOWN_CREDENTIALS_FILE);
+    assertEquals(obtainedPath, wellKnownFile.getAbsolutePath());
+  }
 }
