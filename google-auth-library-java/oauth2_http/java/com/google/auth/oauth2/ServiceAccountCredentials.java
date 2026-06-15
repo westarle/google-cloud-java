@@ -58,6 +58,7 @@ import com.google.auth.RequestMetadataCallback;
 import com.google.auth.ServiceAccountSigner;
 import com.google.auth.http.AuthHttpConstants;
 import com.google.auth.http.HttpTransportFactory;
+import java.util.HashMap;
 import com.google.auth.oauth2.MetricsUtils.RequestType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects.ToStringHelper;
@@ -1125,7 +1126,16 @@ public class ServiceAccountCredentials extends GoogleCredentials
     }
 
     Map<String, List<String>> requestMetadata = jwtCredentials.getRequestMetadata(null);
-    return addQuotaProjectIdToRequestMetadata(quotaProjectId, requestMetadata);
+    requestMetadata = addQuotaProjectIdToRequestMetadata(quotaProjectId, requestMetadata);
+    String metricsHeader =
+        MetricsUtils.getGoogleCredentialsMetricsHeader(
+            RequestType.UNTRACKED, getMetricsCredentialType());
+    if (metricsHeader != null && !metricsHeader.isEmpty()) {
+      Map<String, List<String>> newMetadata = new HashMap<>(requestMetadata);
+      newMetadata.put(MetricsUtils.API_CLIENT_HEADER, Collections.singletonList(metricsHeader));
+      requestMetadata = Collections.unmodifiableMap(newMetadata);
+    }
+    return requestMetadata;
   }
 
   @SuppressWarnings("unused")

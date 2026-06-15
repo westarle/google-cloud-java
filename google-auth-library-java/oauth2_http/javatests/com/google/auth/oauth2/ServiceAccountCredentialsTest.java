@@ -1631,6 +1631,11 @@ class ServiceAccountCredentialsTest extends BaseSerializationTest {
     assertEquals(
         CredentialTypeForMetrics.SERVICE_ACCOUNT_CREDENTIALS_JWT,
         credentials.getMetricsCredentialType());
+
+    // Verify telemetry is propagated into application request headers
+    List<String> apiClientHeader = metadata.get("x-goog-api-client");
+    assertNotNull(apiClientHeader, "Metrics header should be propagated");
+    assertTrue(apiClientHeader.get(0).contains("cred-type/jwt"));
   }
 
   @Test

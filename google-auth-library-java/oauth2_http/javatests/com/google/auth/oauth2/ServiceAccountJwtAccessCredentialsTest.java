@@ -411,6 +411,10 @@ class ServiceAccountJwtAccessCredentialsTest extends BaseSerializationTest {
     assertEquals(
         Collections.singletonList(QUOTA_PROJECT),
         metadata.get(GoogleCredentials.QUOTA_PROJECT_ID_HEADER_KEY));
+
+    List<String> apiClientHeader = metadata.get("x-goog-api-client");
+    assertNotNull(apiClientHeader, "Metrics header should be propagated");
+    assertTrue(apiClientHeader.get(0).contains("cred-type/jwt"));
   }
 
   @Test

@@ -38,10 +38,14 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.util.Clock;
 import com.google.api.client.util.Preconditions;
+import java.util.Collections;
+import java.util.HashMap;
 import com.google.auth.Credentials;
+import com.google.auth.CredentialTypeForMetrics;
 import com.google.auth.RequestMetadataCallback;
 import com.google.auth.ServiceAccountSigner;
 import com.google.auth.oauth2.GoogleCredentials.GoogleCredentialsInfo;
+import com.google.auth.oauth2.MetricsUtils.RequestType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Throwables;
@@ -399,7 +403,16 @@ public class ServiceAccountJwtAccessCredentials extends Credentials
               .build();
       JwtCredentials credentials = credentialsCache.get(defaultClaims);
       Map<String, List<String>> requestMetadata = credentials.getRequestMetadata(uri);
-      return addQuotaProjectIdToRequestMetadata(quotaProjectId, requestMetadata);
+      requestMetadata = addQuotaProjectIdToRequestMetadata(quotaProjectId, requestMetadata);
+      String metricsHeader =
+          MetricsUtils.getGoogleCredentialsMetricsHeader(
+              RequestType.UNTRACKED, getMetricsCredentialType());
+      if (metricsHeader != null && !metricsHeader.isEmpty()) {
+        Map<String, List<String>> newMetadata = new HashMap<>(requestMetadata);
+        newMetadata.put(MetricsUtils.API_CLIENT_HEADER, Collections.singletonList(metricsHeader));
+        requestMetadata = Collections.unmodifiableMap(newMetadata);
+      }
+      return requestMetadata;
     } catch (ExecutionException e) {
       Throwables.propagateIfPossible(e.getCause(), IOException.class);
       // Should never happen
@@ -445,6 +458,11 @@ public class ServiceAccountJwtAccessCredentials extends Credentials
   @Override
   public String getAccount() {
     return getClientEmail();
+  }
+
+  @Override
+  public CredentialTypeForMetrics getMetricsCredentialType() {
+    return CredentialTypeForMetrics.SERVICE_ACCOUNT_CREDENTIALS_JWT;
   }
 
   @Override
