@@ -1441,6 +1441,22 @@ class ServiceAccountCredentialsTest extends BaseSerializationTest {
   }
 
   @Test
+  void fromStream_malformedPrivateKey_throws() throws IOException {
+    InputStream serviceAccountStream =
+        writeServiceAccountStream(CLIENT_ID, CLIENT_EMAIL, "not-a-valid-key", PRIVATE_KEY_ID);
+
+    IOException exception =
+        assertThrows(
+            IOException.class,
+            () ->
+                ServiceAccountCredentials.fromStream(
+                    serviceAccountStream, DUMMY_TRANSPORT_FACTORY));
+    assertTrue(exception.getMessage().contains("Invalid PKCS#8 data"));
+  }
+
+
+
+  @Test
   void fromStream_noPrivateKeyId_throws() throws IOException {
     InputStream serviceAccountStream =
         writeServiceAccountStream(CLIENT_ID, CLIENT_EMAIL, PRIVATE_KEY_PKCS8, null);
