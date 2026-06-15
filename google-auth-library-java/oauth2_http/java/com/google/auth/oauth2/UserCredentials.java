@@ -72,7 +72,8 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
 
   private final String clientId;
   private final String clientSecret;
-  private final String refreshToken;
+  private String refreshToken;
+  private final Object lock = new byte[0];
   private final URI tokenServerUri;
   private final String transportFactoryClassName;
 
@@ -255,7 +256,9 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
    * @return refresh token
    */
   public final String getRefreshToken() {
-    return refreshToken;
+    synchronized (lock) {
+      return refreshToken;
+    }
   }
 
   /**
@@ -264,14 +267,15 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
    * @return Refresh token response data
    */
   private GenericData doRefreshAccessToken() throws IOException {
-    if (refreshToken == null) {
+    String currentRefreshToken = getRefreshToken();
+    if (currentRefreshToken == null) {
       throw new IllegalStateException(
           "UserCredentials instance cannot refresh because there is no refresh token.");
     }
     GenericData tokenRequest = new GenericData();
     tokenRequest.set("client_id", clientId);
     tokenRequest.set("client_secret", clientSecret);
-    tokenRequest.set("refresh_token", refreshToken);
+    tokenRequest.set("refresh_token", currentRefreshToken);
     tokenRequest.set("grant_type", GRANT_TYPE);
     UrlEncodedContent content = new UrlEncodedContent(tokenRequest);
 
@@ -303,6 +307,12 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
     GenericData data = response.parseAs(GenericData.class);
 
     LoggingUtils.logResponsePayload(data, LOGGER_PROVIDER, "Response payload for access token");
+    String newRefreshToken = (String) data.get("refresh_token");
+    if (newRefreshToken != null) {
+      synchronized (lock) {
+        this.refreshToken = newRefreshToken;
+      }
+    }
     return data;
   }
 
@@ -315,8 +325,9 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
   private InputStream getUserCredentialsStream() throws IOException {
     GenericJson json = new GenericJson();
     json.put("type", GoogleCredentialsInfo.USER_CREDENTIALS.getFileType());
-    if (refreshToken != null) {
-      json.put("refresh_token", refreshToken);
+    String currentRefreshToken = getRefreshToken();
+    if (currentRefreshToken != null) {
+      json.put("refresh_token", currentRefreshToken);
     }
     if (tokenServerUri != null) {
       json.put("token_server_uri", tokenServerUri);
@@ -355,7 +366,7 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
         getAccessToken(),
         clientId,
         clientSecret,
-        refreshToken,
+        getRefreshToken(),
         tokenServerUri,
         transportFactoryClassName,
         quotaProjectId);
@@ -374,7 +385,7 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
         .add("requestMetadata", getRequestMetadataInternal())
         .add("temporaryAccess", getAccessToken())
         .add("clientId", clientId)
-        .add("refreshToken", refreshToken)
+        .add("refreshToken", getRefreshToken())
         .add("tokenServerUri", tokenServerUri)
         .add("transportFactoryClassName", transportFactoryClassName)
         .add("quotaProjectId", quotaProjectId)
@@ -392,7 +403,7 @@ public class UserCredentials extends GoogleCredentials implements IdTokenProvide
         && Objects.equals(this.getAccessToken(), other.getAccessToken())
         && Objects.equals(this.clientId, other.clientId)
         && Objects.equals(this.clientSecret, other.clientSecret)
-        && Objects.equals(this.refreshToken, other.refreshToken)
+        && Objects.equals(this.getRefreshToken(), other.getRefreshToken())
         && Objects.equals(this.tokenServerUri, other.tokenServerUri)
         && Objects.equals(this.transportFactoryClassName, other.transportFactoryClassName)
         && Objects.equals(this.quotaProjectId, other.quotaProjectId);

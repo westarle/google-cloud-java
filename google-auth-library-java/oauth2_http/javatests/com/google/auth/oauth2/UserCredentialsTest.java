@@ -913,4 +913,67 @@ class UserCredentialsTest extends BaseSerializationTest {
     GenericJson json = writeUserJson(clientId, clientSecret, refreshToken, quotaProjectId, null);
     return TestUtils.jsonToInputStream(json);
   }
+
+  @Test
+  void refreshAccessToken_updatesRefreshTokenWhenPresent() throws IOException {
+    MockTokenServerTransportFactory transportFactory = new MockTokenServerTransportFactory();
+    transportFactory.transport.addClient(CLIENT_ID, CLIENT_SECRET);
+    transportFactory.transport.addRefreshToken(REFRESH_TOKEN, ACCESS_TOKEN);
+
+    // Mock a response that includes a new refresh token
+    String newRefreshToken = "new-refresh-token";
+    String newAccessToken = "new-access-token";
+    MockLowLevelHttpResponse response =
+        new MockLowLevelHttpResponse()
+            .setContentType(com.google.api.client.json.Json.MEDIA_TYPE)
+            .setContent(
+                String.format(
+                    "{\"access_token\":\"%s\",\"expires_in\":3600,\"token_type\":\"Bearer\",\"refresh_token\":\"%s\"}",
+                    newAccessToken, newRefreshToken));
+    transportFactory.transport.addResponseSequence(response);
+
+    UserCredentials userCredentials =
+        UserCredentials.newBuilder()
+            .setClientId(CLIENT_ID)
+            .setClientSecret(CLIENT_SECRET)
+            .setRefreshToken(REFRESH_TOKEN)
+            .setHttpTransportFactory(transportFactory)
+            .build();
+
+    AccessToken token = userCredentials.refreshAccessToken();
+
+    assertEquals(newAccessToken, token.getTokenValue());
+    assertEquals(newRefreshToken, userCredentials.getRefreshToken());
+  }
+
+  @Test
+  void refreshAccessToken_preservesRefreshTokenWhenOmitted() throws IOException {
+    MockTokenServerTransportFactory transportFactory = new MockTokenServerTransportFactory();
+    transportFactory.transport.addClient(CLIENT_ID, CLIENT_SECRET);
+    transportFactory.transport.addRefreshToken(REFRESH_TOKEN, ACCESS_TOKEN);
+
+    // Mock a response that DOES NOT include a refresh token
+    String newAccessToken = "new-access-token";
+    MockLowLevelHttpResponse response =
+        new MockLowLevelHttpResponse()
+            .setContentType(com.google.api.client.json.Json.MEDIA_TYPE)
+            .setContent(
+                String.format(
+                    "{\"access_token\":\"%s\",\"expires_in\":3600,\"token_type\":\"Bearer\"}",
+                    newAccessToken));
+    transportFactory.transport.addResponseSequence(response);
+
+    UserCredentials userCredentials =
+        UserCredentials.newBuilder()
+            .setClientId(CLIENT_ID)
+            .setClientSecret(CLIENT_SECRET)
+            .setRefreshToken(REFRESH_TOKEN)
+            .setHttpTransportFactory(transportFactory)
+            .build();
+
+    AccessToken token = userCredentials.refreshAccessToken();
+
+    assertEquals(newAccessToken, token.getTokenValue());
+    assertEquals(REFRESH_TOKEN, userCredentials.getRefreshToken());
+  }
 }
