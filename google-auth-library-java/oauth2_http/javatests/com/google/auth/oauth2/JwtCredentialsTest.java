@@ -130,6 +130,23 @@ class JwtCredentialsTest extends BaseSerializationTest {
   }
 
   @Test
+  void builder_rejectsAudienceAndScope() {
+    JwtClaims claims =
+        JwtClaims.newBuilder()
+            .setAudience("some-audience")
+            .setIssuer("some-issuer")
+            .setSubject("some-subject")
+            .setAdditionalClaims(java.util.Collections.singletonMap("scope", "some-scope"))
+            .build();
+    JwtCredentials.Builder builder =
+        JwtCredentials.newBuilder()
+            .setJwtClaims(claims)
+            .setPrivateKeyId(PRIVATE_KEY_ID)
+            .setPrivateKey(getPrivateKey());
+    assertThrows(IllegalStateException.class, builder::build);
+  }
+
+  @Test
   void jwtWithClaims_overwritesClaims() throws IOException {
     JwtClaims claims =
         JwtClaims.newBuilder()

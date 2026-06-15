@@ -90,6 +90,12 @@ public class JwtCredentials extends Credentials implements JwtProvider {
     this.privateKeyId = builder.getPrivateKeyId();
     this.jwtClaims = Preconditions.checkNotNull(builder.getJwtClaims());
     Preconditions.checkState(jwtClaims.isComplete(), JWT_INCOMPLETE_ERROR_MESSAGE);
+    boolean hasScopes =
+        jwtClaims.getAdditionalClaims().containsKey("scope")
+            && !jwtClaims.getAdditionalClaims().get("scope").isEmpty();
+    Preconditions.checkState(
+        !(jwtClaims.getAudience() != null && hasScopes),
+        "JWT claims cannot contain both audience and scope.");
     this.lifeSpanSeconds = Preconditions.checkNotNull(builder.getLifeSpanSeconds());
     this.clock = Preconditions.checkNotNull(builder.getClock());
   }
